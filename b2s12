@@ -59,7 +59,84 @@ En dicho comentario, debe inferir lo siguiente basándose en el resultado:
 > **Nota de desarrollo:** Trabajar en un único archivo fuente de Scala que contenga la `case class`, la lógica de procesamiento y el comentario final para ser revisado por el docente.
 
 ---
+```scala
+package semana12eda
+import cats.effect.{IO, IOApp}
+import fs2.text
+import fs2.io.file.{Files, Path}
+import fs2.data.csv.*
+import fs2.data.csv.generic.semiauto.*
 
+case class Jugador(
+                     Pos: Int,
+                     Nombre: String,
+                     Equipo: String,
+                     PJ: Int,
+                     Goles: Int
+                   )
+// Derivación automática del decoder
+given CellDecoder[Int] =
+  CellDecoder.stringDecoder.map(_.trim.toInt)
+Decodificador de filas
+given CsvRowDecoder[Jugador, String] = deriveCsvRowDecoder[Jugador]
+
+object Estaditica:
+  def sumatoria(xs: List[Int]): Int =
+    xs.sum
+
+  def promedio(xs: List[Int]): Double =
+    if xs.isEmpty then 0.0
+    else xs.sum.toDouble / xs.size
+
+  def maximo(xs: List[Int]): Int =
+    xs.max
+
+  def minimo(xs: List[Int]): Int =
+    xs.min
+
+  def desviacionMedia(xs: List[Int]): Double =
+    val media = promedio(xs)
+    xs.map(x => math.abs(x - media)).sum / xs.size
+
+object taller extends IOApp.Simple:
+
+  val filePath: Path =
+    Path("C:\\Users\\USUARIO\\Documents\\3ciclo\\Clase\\src\\main\\resources\\data\\LigaPro2025-2026.csv")
+
+  val run: IO[Unit] =
+    val lecturaCSV: IO[List[Jugador]] = Files[IO]
+      .readAll(filePath)
+      .through(text.utf8.decode)
+      .through(decodeUsingHeaders[Jugador](','))
+      .compile
+      .toList
+
+    lecturaCSV.flatMap { jugadores =>
+      val jugGoles: List[Int] = jugadores.map(_.Goles)
+      val jugPJ: List[Int] = jugadores.map(_.PJ)
+
+      val totalGoles = Estaditica.sumatoria(jugGoles)
+      val promedioPJ = Estaditica.promedio(jugPJ)
+      val maxiPJ = Estaditica.maximo(jugPJ)
+      val miniPJ = Estaditica.minimo(jugPJ)
+      val desviacionMediaGol =
+        Estaditica.desviacionMedia(jugGoles)
+
+      IO.println("=" * 40) >>
+        IO.println(s"Total de goles marcados: $totalGoles") >>
+        IO.println(f"Promedio jugadores PJ: $promedioPJ%.2f") >>
+        IO.println(s"Máximo PJ: $maxiPJ") >>
+        IO.println(s"Mínimo PJ: $miniPJ") >>
+        IO.println(f"Desviación Media goles: $desviacionMediaGol%.2f") >>
+        IO.println("=" * 40)
+    }
+/*¿Qué interpretación le da a este valor respecto a la consistencia de los goleadores de la liga?
+(¿Están todos cerca del promedio o hay mucha disparidad?).
+    Ya que se pudo ver que la desviacion media no es 0 ni cercana a esa cantidad se puede ver que existe una dispersion moderada para los goles
+    anotados, por lo que se pudo ver que no todos los jugaodres tienen un rendimiento similar, si no que hay jugadores que anotan ya sea mas o
+    menos goles que el promedio
+*/
+```
 ### ✅ Calificación:
 
 Una vez que termine debe presentar su trabajo a su docente.
